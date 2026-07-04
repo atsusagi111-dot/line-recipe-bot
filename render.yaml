@@ -22,7 +22,7 @@ services:
       - key: OPENAI_TEXT_MODEL
         value: gpt-4o
       - key: OPENAI_IMAGE_MODEL
-        value: dall-e-3
+        value: gpt-image-1
       - key: DAILY_LIMIT
         value: "3"
       - key: USAGE_FILE_PATH

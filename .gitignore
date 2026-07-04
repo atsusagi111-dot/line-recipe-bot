@@ -2,5 +2,6 @@
 __pycache__/
 *.pyc
 data/usage.json
+static/generated/
 .venv/
 venv/

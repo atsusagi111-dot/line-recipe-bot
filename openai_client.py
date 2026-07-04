@@ -1,11 +1,18 @@
 # OpenAIのAPIを使って「レシピ文章の生成」と「料理イメージ画像の生成」を行う係。
 # ・レシピ文章 → GPT-4o に JSON形式で出力してもらう
-# ・イメージ画像 → DALL-E 3 で生成する
+# ・イメージ画像 → gpt-image-1 で生成する
+#   （gpt-image-1はURLではなくBase64データで画像を返すため、
+#    このサーバーのstaticフォルダにファイルとして保存し、そのURLをLINEに渡す）
+import base64
 import json
+import os
+import uuid
 
 from openai import OpenAI
 
 import config
+
+_STATIC_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "static", "generated")
 
 _client = OpenAI(api_key=config.OPENAI_API_KEY)
 
@@ -71,11 +78,25 @@ def generate_recipes(ingredients: list[str], seasonings: list[str]) -> dict:
 
 
 def generate_image(image_prompt: str) -> str:
-    """料理の説明文（英語プロンプト）から、DALL-E 3で画像を生成しURLを返す"""
+    """
+    料理の説明文（英語プロンプト）から、gpt-image-1で画像を生成する。
+    生成された画像（Base64）をファイルとして保存し、LINEから読み込める公開URLを返す。
+    PUBLIC_BASE_URLが設定されていない場合は、画像なし（空文字）として扱う。
+    """
+    if not config.PUBLIC_BASE_URL:
+        return ""
+
     response = _client.images.generate(
         model=config.OPENAI_IMAGE_MODEL,
         prompt=image_prompt,
         size="1024x1024",
         n=1,
     )
-    return response.data[0].url
+    image_bytes = base64.b64decode(response.data[0].b64_json)
+
+    os.makedirs(_STATIC_IMAGE_DIR, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.png"
+    with open(os.path.join(_STATIC_IMAGE_DIR, filename), "wb") as f:
+        f.write(image_bytes)
+
+    return f"{config.PUBLIC_BASE_URL.rstrip('/')}/static/generated/{filename}"

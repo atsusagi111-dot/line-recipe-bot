@@ -16,10 +16,16 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # レシピ文章生成に使うモデルと、画像生成に使うモデル
 OPENAI_TEXT_MODEL = os.getenv("OPENAI_TEXT_MODEL", "gpt-4o")
-OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3")
+# gpt-image-1はdall-e-3と違い、画像をURLではなくBase64データで返すため、
+# 生成した画像はサーバー内に保存し、そのファイルへのURLをLINEに渡す
+OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1")
 
 # 1人（1つのLINEアカウント）が1日に提案してもらえる回数の上限
 DAILY_LIMIT = int(os.getenv("DAILY_LIMIT", "3"))
 
 # 利用回数を記録しておくファイルの場所
 USAGE_FILE_PATH = os.getenv("USAGE_FILE_PATH", "data/usage.json")
+
+# 生成した画像をLINEから読み込めるようにするための、このサーバー自身の公開URL
+# Renderにデプロイすると自動で環境変数 RENDER_EXTERNAL_URL がセットされるので、通常は指定不要
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", os.getenv("RENDER_EXTERNAL_URL", ""))
