@@ -2,6 +2,7 @@
 # LINEから届いたメッセージを受け取り → 内容を解析 → レシピと画像を生成 → LINEに返信する、
 # という一連の流れをここでつなぎ合わせています。
 import json
+import logging
 import threading
 
 from flask import Flask, abort, request
@@ -26,6 +27,8 @@ import openai_client
 import usage_limiter
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 line_config = Configuration(access_token=config.LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(config.LINE_CHANNEL_SECRET)
@@ -87,6 +90,8 @@ def _generate_and_push(user_id: str, ingredients: list, seasonings: list) -> Non
         recipes = openai_client.generate_recipes(ingredients, seasonings)
         _push_recipes(user_id, recipes)
     except Exception:
+        # Renderのログに実際のエラー内容を残す（原因調査用）
+        logger.exception("レシピ生成またはLINE送信中にエラーが発生しました")
         with ApiClient(line_config) as api_client:
             MessagingApi(api_client).push_message(
                 PushMessageRequest(
