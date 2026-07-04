@@ -19,6 +19,9 @@ OPENAI_TEXT_MODEL = os.getenv("OPENAI_TEXT_MODEL", "gpt-4o")
 # gpt-image-1はdall-e-3と違い、画像をURLではなくBase64データで返すため、
 # 生成した画像はサーバー内に保存し、そのファイルへのURLをLINEに渡す
 OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1")
+# 画質（low/medium/high）。highは1枚あたり約35秒かかるため、
+# LINEの返信速度を優先してlowを既定値にしている（実測で1枚あたり約13秒）
+OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY", "low")
 
 # 1人（1つのLINEアカウント）が1日に提案してもらえる回数の上限
 DAILY_LIMIT = int(os.getenv("DAILY_LIMIT", "3"))

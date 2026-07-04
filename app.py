@@ -4,6 +4,7 @@
 import json
 import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from flask import Flask, abort, request
 from linebot.v3 import WebhookHandler
@@ -64,12 +65,23 @@ def _reply(reply_token: str, text: str) -> None:
 
 def _push_recipes(user_id: str, recipes: dict) -> None:
     """adult/babyそれぞれの画像を生成し、Flex Messageとしてまとめて送信する"""
-    messages = []
     labels = {"adult": "👨‍👩‍👧 大人2人分", "baby": "🍼 1歳児の離乳食"}
+    keys = ("adult", "baby")
 
-    for key in ("adult", "baby"):
+    # 画像生成は1枚十数秒かかるため、2枚を同時に生成して待ち時間を半分にする
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        image_urls = list(
+            executor.map(
+                lambda key: openai_client.generate_image(
+                    recipes[key].get("image_prompt", recipes[key].get("recipe_name", ""))
+                ),
+                keys,
+            )
+        )
+
+    messages = []
+    for key, image_url in zip(keys, image_urls):
         recipe = recipes[key]
-        image_url = openai_client.generate_image(recipe.get("image_prompt", recipe.get("recipe_name", "")))
         bubble = flex_builder.build_recipe_bubble(recipe, image_url, labels[key])
         messages.append(
             FlexMessage(
@@ -123,7 +135,7 @@ def handle_text_message(event: MessageEvent) -> None:
         )
         return
 
-    # GPT-4oでの文章生成とDALL-E 3での画像生成には時間がかかる（数十秒）ため、
+    # GPT-4oでの文章生成とgpt-image-1での画像生成には時間がかかる（数十秒）ため、
     # 先に「受け付けました」だけ即返信し、本処理は裏側（別スレッド）で進めてから
     # 出来上がり次第プッシュ通知でレシピを送る、という2段階の流れにしている。
     _reply(

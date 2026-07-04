@@ -111,6 +111,7 @@ def generate_image(image_prompt: str) -> str:
         model=config.OPENAI_IMAGE_MODEL,
         prompt=image_prompt,
         size="1024x1024",
+        quality=config.OPENAI_IMAGE_QUALITY,
         n=1,
     )
     image_bytes = base64.b64decode(response.data[0].b64_json)

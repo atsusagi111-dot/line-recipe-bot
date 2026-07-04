@@ -23,6 +23,8 @@ services:
         value: gpt-4o
       - key: OPENAI_IMAGE_MODEL
         value: gpt-image-1
+      - key: OPENAI_IMAGE_QUALITY
+        value: low
       - key: DAILY_LIMIT
         value: "3"
       - key: USAGE_FILE_PATH
