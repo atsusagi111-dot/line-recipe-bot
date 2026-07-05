@@ -22,9 +22,19 @@ _SYSTEM_PROMPT = """あなたは2つの顔を持つ専門家です。
 ・大人用レシピについては、家庭で「ご飯がすすむ」と思えるくらい美味しい絶品料理を作る、経験豊富なプロの料理人。
 ・離乳食レシピについては、月齢ごとの適切な形状・味付けを熟知した離乳食の専門家（管理栄養士）。
 
+レシピ内容・味付け・調理法は、クックパックや白ごはん.comなど日本の人気レシピサイトでレビュー評価が高い
+「定番・王道」とされる組み合わせや調理法の傾向を踏まえて考案すること（実在の特定レシピの丸写しではなく、
+高評価な定番パターンを参考にした独自のレシピを提案する）。
+
 必ず守るルール:
 1. 食材（主材料）は、ユーザーが入力したものだけに限定すること。入力に無い食材を追加しない
-   （例外として、茹でる・煮る際の「水」「だし汁（水+顆粒だし程度）」は使ってよい）。
+   （例外として、茹でる・煮る際の「水」「だし汁（水+顆粒だし程度）」は使ってよい。
+   また、babyレシピで指定された味の方向性を表現するために必要な調理のベースとなる食材
+   （例: ホワイトソース仕立てなら牛乳・少量のバターや小麦粉、コンソメ仕立てならコンソメ、
+   中華風だし仕立てなら鶏がらだし、トマト仕立てなら無塩トマト缶やトマト）も、
+   主材料としてではなく味付けのベースとして使ってよい）。
+   彩りや付け合わせのためであっても、ingredientsに無い食材（例: パセリ、ミニトマト、彩り野菜など）を
+   steps・image_promptに勝手に登場させないこと。
 2. 調味料については:
    - ユーザーが調味料を指定した場合は、その中から選んで使うこと（指定された調味料をすべて使い切る必要はない）。
    - ユーザーが調味料を1つも指定しなかった場合は、料理人・栄養士としての判断で、家庭に常備されている
@@ -44,6 +54,9 @@ _SYSTEM_PROMPT = """あなたは2つの顔を持つ専門家です。
    - すりつぶす・ペースト状にする・裏ごしするといった工程は、繊維が硬く1歳児には噛み切りにくい食材（例: 筋の多い葉物など）を使う場合にのみ、必要な範囲で選択すること。むやみにペースト状にしない。
    - 選んだ切り方は必ずstepsの中に具体的な工程として明記すること（例:「いちょう切りにする」「そぎ切りにして小さくする」など）。
 8. image_prompt（画像生成AI用の英語プロンプト）は、実際にstepsを行った結果としてできあがる見た目・食感と完全に一致させ、かつ写実的であること。
+   - image_promptに登場させてよい食材は、そのレシピのingredientsに列挙されているものだけ。
+     ingredientsに無い野菜・薬味・付け合わせ・彩り要素（例: パセリを飾る、ミニトマトを添える等）は
+     絶対に描写しないこと。皿の上に写るのはingredientsに書かれた食材のみとする。
    - stepsでペースト状にする／すりつぶす／裏ごしする工程がある場合のみ、image_promptに"smooth pureed"のような表現を使うこと。
    - それ以外の場合は、"pureed"や"paste"、"smooth"という表現は使わないこと。
    - 食材は日本のスーパーで売られている実物の色・厚み・自然な切り口で描写すること
@@ -56,7 +69,14 @@ _SYSTEM_PROMPT = """あなたは2つの顔を持つ専門家です。
    ユーザーメッセージ内で指定された今回の味の方向性（こってり系／さっぱり・ヘルシー系）に従い、
    さっぱり系が指定された場合は、蒸す・茹でる・和える・煮浸しにするなどの調理法や、ポン酢・レモン・酢・薬味・
    出汁を使ったさっぱりした味付けを選び、油や糖分を控えめにすること。
-10. 出力は必ず指定のJSON形式のみで、余計な説明文を含めないこと。
+10. baby（離乳食）レシピは「和風だしで煮る」ばかりに偏らないこと。ユーザーメッセージ内で指定された
+    今回の味の方向性（和風だし／ホワイトソース・ミルク仕立て／コンソメ洋風／中華風だし／トマト仕立て等）に従い、
+    味付けのベースとなる食材・調味料（牛乳、コンソメ、鶏がらだし、トマトなど）をrecipe_nameやingredients、
+    stepsに具体的に反映させ、指定された方向性が実際の味付けとして伝わるレシピにすること
+    （1歳児向けの薄味・安全基準は守りつつ、毎回同じような和風煮物にならないようにする）。
+    これらの味付けベース食材も、必ずbabyのingredientsに分量付きで含めること
+    （例: {"name": "牛乳", "amount": "大さじ2"}）。
+11. 出力は必ず指定のJSON形式のみで、余計な説明文を含めないこと。
 
 出力するJSONの形式（この構造に厳密に従うこと）:
 {
@@ -87,10 +107,27 @@ _ADULT_STYLES = [
     ("さっぱり・ヘルシー系（蒸す、茹でる、和える、煮浸しなど。ポン酢・レモン・酢・薬味・出汁を活かし、油や糖分は控えめ）", 40),
 ]
 
+# 離乳食（baby）の味付けの方向性。「和風だしで煮る」に偏らないよう、
+# 洋風・中華風など複数のテイストをランダムに織り交ぜてバラエティーを持たせる
+_BABY_STYLES = [
+    ("和風だし仕立て（昆布・かつおだし、薄口醤油や味噌をごく少量で香り付け）", 30),
+    ("ホワイトソース・ミルク仕立て（牛乳や粉ミルク、少量のバターや小麦粉でとろみをつけたクリーミーな味）", 20),
+    ("コンソメ・洋風仕立て（コンソメや野菜スープでコトコト煮た優しい洋風の味）", 20),
+    ("中華風だし仕立て（鶏がらだしをごく薄めに使い、ごま油をひとしずく香らせる程度）", 15),
+    ("トマト仕立て（トマトや無塩トマト缶を使った、酸味の少ない優しい味）", 15),
+]
 
-def generate_recipes(ingredients: list[str], seasonings: list[str]) -> dict:
+
+def generate_recipes(
+    ingredients: list[str],
+    seasonings: list[str],
+    exclude_recipe_names: dict[str, list[str]] | None = None,
+) -> dict:
     """
     食材・調味料のリストから、大人用レシピと離乳食レシピをまとめて生成する。
+
+    exclude_recipe_names: {"adult": [...], "baby": [...]} の形で、
+        「他には？」と追加提案を求められた際に、既に提案済みの料理名を避けるために渡す。
 
     戻り値: {"adult": {...}, "baby": {...}} という辞書（_SYSTEM_PROMPT のJSON形式）
     """
@@ -99,13 +136,32 @@ def generate_recipes(ingredients: list[str], seasonings: list[str]) -> dict:
         if seasonings
         else "（指定なし。家庭の基本的な調味料の中から、プロとして最適なものを自由に選んで味を決めてください）"
     )
-    styles, weights = zip(*_ADULT_STYLES)
-    adult_style = random.choices(styles, weights=weights, k=1)[0]
+    adult_styles, adult_weights = zip(*_ADULT_STYLES)
+    adult_style = random.choices(adult_styles, weights=adult_weights, k=1)[0]
+
+    baby_styles, baby_weights = zip(*_BABY_STYLES)
+    baby_style = random.choices(baby_styles, weights=baby_weights, k=1)[0]
+
+    exclude_text = ""
+    if exclude_recipe_names:
+        already_suggested = [
+            name
+            for names in exclude_recipe_names.values()
+            for name in names
+            if name
+        ]
+        if already_suggested:
+            exclude_text = (
+                "\n※ユーザーから「他には？」と追加提案を求められています。"
+                f"次の料理名は既に提案済みなので、それらとは違う料理を考えること: {'、'.join(already_suggested)}\n"
+            )
 
     user_prompt = (
         f"食材: {'、'.join(ingredients)}\n"
         f"調味料: {seasoning_text}\n"
-        f"今回のadult（大人用）レシピの味の方向性: {adult_style}\n\n"
+        f"今回のadult（大人用）レシピの味の方向性: {adult_style}\n"
+        f"今回のbaby（離乳食）レシピの味の方向性: {baby_style}\n"
+        f"{exclude_text}\n"
         "上記のルールに従い、大人2人分のレシピと1歳児向け離乳食レシピをJSONで出力してください。"
     )
 
@@ -123,18 +179,32 @@ def generate_recipes(ingredients: list[str], seasonings: list[str]) -> dict:
     return json.loads(content)
 
 
-def generate_image(image_prompt: str) -> str:
+def generate_image(image_prompt: str, ingredient_names: list[str] | None = None) -> str:
     """
     料理の説明文（英語プロンプト）から、gpt-image-1で画像を生成する。
     生成された画像（Base64）をファイルとして保存し、LINEから読み込める公開URLを返す。
     PUBLIC_BASE_URLが設定されていない場合は、画像なし（空文字）として扱う。
+
+    ingredient_names: そのレシピのingredients名の一覧。指定した場合、
+        「この食材リストに無いものは描写しない」という制約を画像生成AIへの
+        プロンプトに直接追加し、材料にない野菜等が写り込むのを防ぐ。
     """
     if not config.PUBLIC_BASE_URL:
         return ""
 
+    final_prompt = image_prompt
+    if ingredient_names:
+        allowed = ", ".join(ingredient_names)
+        final_prompt = (
+            f"{image_prompt}\n\n"
+            f"Strict constraint: only these ingredients may be visible in the dish: {allowed}. "
+            "Do not add, show, or garnish with any other vegetable, herb, or ingredient that is "
+            "not in this list."
+        )
+
     response = _client.images.generate(
         model=config.OPENAI_IMAGE_MODEL,
-        prompt=image_prompt,
+        prompt=final_prompt,
         size="1024x1024",
         quality=config.OPENAI_IMAGE_QUALITY,
         n=1,

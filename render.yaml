@@ -29,3 +29,5 @@ services:
         value: "3"
       - key: USAGE_FILE_PATH
         value: data/usage.json
+      - key: CONVERSATION_STATE_FILE_PATH
+        value: data/conversation_state.json

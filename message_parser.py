@@ -14,13 +14,24 @@ USAGE_TEXT = (
     "食材：豚肉、キャベツ、人参\n"
     "調味料：醤油、みりん\n\n"
     "※調味料は無くても大丈夫です。\n"
-    "※食材は、、（読点）やカンマ、スペースで区切ってください。"
+    "※食材は、、（読点）やカンマ、スペースで区切ってください。\n"
+    "※提案されたレシピが気に入らない時は「他には？」と送ると、同じ食材で別のレシピを提案します。"
 )
 
 _LABEL_INGREDIENT = re.compile(r"^\s*食材\s*[:：]\s*(.*)$")
 _LABEL_SEASONING = re.compile(r"^\s*調味料\s*[:：]\s*(.*)$")
 # 「、」「,」「，」「・」および半角/全角スペースを区切り文字として扱う
 _SPLIT_PATTERN = re.compile(r"[、,，・\s]+")
+
+# 「他には？」など、直前と同じ食材で追加提案を求める発言（記号や空白の揺れを許容する）
+_MORE_REQUEST_PATTERN = re.compile(
+    r"^(他(に|の)?|ほか(に|の)?|別(の|案)|もう\s*(1|一)\s*つ|もっと)[はのをも]?\s*[？?！!。、\s]*$"
+)
+
+
+def is_more_request(text: str) -> bool:
+    """「他には？」「ほかにない？」のような、追加提案を求める発言かどうかを判定する"""
+    return bool(_MORE_REQUEST_PATTERN.match(text.strip()))
 
 
 def _split_items(raw: str) -> list[str]:

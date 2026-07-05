@@ -29,6 +29,9 @@ DAILY_LIMIT = int(os.getenv("DAILY_LIMIT", "3"))
 # 利用回数を記録しておくファイルの場所
 USAGE_FILE_PATH = os.getenv("USAGE_FILE_PATH", "data/usage.json")
 
+# 「他には？」で続きを提案するために、直近のリクエスト内容を記録しておくファイルの場所
+CONVERSATION_STATE_FILE_PATH = os.getenv("CONVERSATION_STATE_FILE_PATH", "data/conversation_state.json")
+
 # 生成した画像をLINEから読み込めるようにするための、このサーバー自身の公開URL
 # Renderにデプロイすると自動で環境変数 RENDER_EXTERNAL_URL がセットされるので、通常は指定不要
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", os.getenv("RENDER_EXTERNAL_URL", ""))

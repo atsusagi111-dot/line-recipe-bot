@@ -22,6 +22,7 @@ from linebot.v3.messaging import (
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
 import config
+import conversation_state
 import flex_builder
 import message_parser
 import openai_client
@@ -73,7 +74,8 @@ def _push_recipes(user_id: str, recipes: dict) -> None:
         image_urls = list(
             executor.map(
                 lambda key: openai_client.generate_image(
-                    recipes[key].get("image_prompt", recipes[key].get("recipe_name", ""))
+                    recipes[key].get("image_prompt", recipes[key].get("recipe_name", "")),
+                    [item.get("name", "") for item in recipes[key].get("ingredients", [])],
                 ),
                 keys,
             )
@@ -96,10 +98,16 @@ def _push_recipes(user_id: str, recipes: dict) -> None:
         )
 
 
-def _generate_and_push(user_id: str, ingredients: list, seasonings: list) -> None:
+def _generate_and_push(
+    user_id: str, ingredients: list, seasonings: list, exclude_recipe_names: dict | None = None
+) -> None:
     """時間のかかるAI生成処理をバックグラウンドで行い、終わったらLINEにプッシュ送信する"""
     try:
-        recipes = openai_client.generate_recipes(ingredients, seasonings)
+        recipes = openai_client.generate_recipes(ingredients, seasonings, exclude_recipe_names)
+        conversation_state.add_recipe_names(
+            user_id,
+            {key: recipes[key].get("recipe_name", "") for key in ("adult", "baby") if key in recipes},
+        )
         _push_recipes(user_id, recipes)
     except Exception:
         # Renderのログに実際のエラー内容を残す（原因調査用）
@@ -122,10 +130,27 @@ def handle_text_message(event: MessageEvent) -> None:
     user_id = event.source.user_id
     text = event.message.text
 
-    parsed = message_parser.parse_input(text)
-    if parsed is None:
-        _reply(event.reply_token, message_parser.USAGE_TEXT)
-        return
+    if message_parser.is_more_request(text):
+        last_request = conversation_state.get_last_request(user_id)
+        if last_request is None:
+            _reply(
+                event.reply_token,
+                "続きを提案するための食材情報が見つかりませんでした。まずは食材を教えてください🙏\n\n"
+                + message_parser.USAGE_TEXT,
+            )
+            return
+        ingredients = last_request["ingredients"]
+        seasonings = last_request["seasonings"]
+        exclude_recipe_names = last_request.get("recipe_names")
+    else:
+        parsed = message_parser.parse_input(text)
+        if parsed is None:
+            _reply(event.reply_token, message_parser.USAGE_TEXT)
+            return
+        ingredients = parsed["ingredients"]
+        seasonings = parsed["seasonings"]
+        exclude_recipe_names = None
+        conversation_state.save_request(user_id, ingredients, seasonings)
 
     allowed, remaining = usage_limiter.check_and_increment(user_id)
     if not allowed:
@@ -144,7 +169,7 @@ def handle_text_message(event: MessageEvent) -> None:
     )
     threading.Thread(
         target=_generate_and_push,
-        args=(user_id, parsed["ingredients"], parsed["seasonings"]),
+        args=(user_id, ingredients, seasonings, exclude_recipe_names),
         daemon=True,
     ).start()
 
